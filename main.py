@@ -199,7 +199,7 @@ class crontab_gui():
         Frame.setWindowTitle(_translate("Frame", "Crontab GUI"))
         self.label.setText(_translate("Frame", "Crontab-GUI"))
         self.save_button.setText(_translate("Frame", "Save"))
-        self.cancel_button.setText(_translate("Frame", "Cancel"))
+        self.cancel_button.setText(_translate("Frame", "Close"))
         self.minute_input.setText(_translate("Frame", "*"))
         self.hour_input.setText(_translate("Frame", "*"))
         self.day_input.setText(_translate("Frame", "*"))
@@ -262,6 +262,9 @@ class crontab_gui():
         self.add_button.clicked.connect(self.set_custom_time)
         self.cancel_button.clicked.connect(sys.exit)
         self.pushButton_7.clicked.connect(self.handle_add_cron_button)
+        self.save_button.clicked.connect(self.save_crons_to_file)
+        self.pushButton_8.clicked.connect(self.back_up_crons)
+        self.clean_files()
 
     def clean_files(self) -> None:
         try:
@@ -271,16 +274,14 @@ class crontab_gui():
             print("dont exist")
 
     def add_crons_new(self, crons: [[]]) -> None:
-
         for cron in crons:
+            rows = self.tableWidget.rowCount()
             self.cron_list.append(cron)
-        rows = self.tableWidget.rowCount()
-        for i in crons:
             self.tableWidget.setRowCount(rows+1)
             self.tableWidget.setItem(
-                rows, 0, QtWidgets.QTableWidgetItem(i[0]))
+                rows, 0, QtWidgets.QTableWidgetItem(cron[0]))
             self.tableWidget.setItem(
-                rows, 1, QtWidgets.QTableWidgetItem(i[1]))
+                rows, 1, QtWidgets.QTableWidgetItem(cron[1]))
             self.tableWidget.setCellWidget(
                 rows, 2, QtWidgets.QPushButton(self.iconEdit, ''))
             self.delete = QtWidgets.QPushButton(self.iconDelete, '')
@@ -288,7 +289,7 @@ class crontab_gui():
             self.tableWidget.setCellWidget(
                 rows, 3, self.delete)
 
-    def handle_add_cron_button(self):
+    def handle_add_cron_button(self) -> None:
 
         cron = self.lineEdit.text()
         times = ""
@@ -336,7 +337,7 @@ class crontab_gui():
                 if splited[0].startswith("@"):
                     crons.append(
                         [splited[0], " ".join(splited[1:])])
-                else:
+                elif splited[0] != '':
                     crons.append(
                         [" ".join(splited[:5]), " ".join(splited[5:])])
 
@@ -344,16 +345,17 @@ class crontab_gui():
             QtWidgets.QMessageBox.information(None,
                                               'No crons', 'this user has no crons')
             return
+
         self.clear_crons_gui()
         self.add_crons_new(crons)
 
-    def changed_cron(self, time: str = ''):
+    def changed_cron(self, time: str = '') -> None:
         self.new_cront_job = self.command_input.text()
         if time != '' and time != self.new_cron_time:
             self.new_cron_time = time
         self.lineEdit.setText(f"{self.new_cron_time} {self.new_cront_job}")
 
-    def set_custom_time(self):
+    def set_custom_time(self) -> None:
         times = " ".join([
             self.minute_input.text(),
             self.hour_input.text(),
@@ -384,6 +386,42 @@ class crontab_gui():
     def clear_crons_gui(self) -> None:
         self.cron_list = []
         self.tableWidget.setRowCount(0)
+
+    def save_crons_to_file(self) -> None:
+        with open(self.crontab_file_name, 'w') as f:
+            if self.cron_list:
+                for i in self.cron_list:
+                    f.write(" ".join([*i])+'\n')
+            else:
+                f.write('')
+
+        save = subprocess.Popen(['crontab', self.crontab_file_name],
+                                stderr=subprocess.PIPE)
+        stderr = save.communicate()
+        exit_code = save.wait()
+        if exit_code:
+            QtWidgets.QMessageBox.warning(
+                None, 'Error saving file', stderr[1].decode('utf-8'))
+            return
+        QtWidgets.QMessageBox.information(
+            None, 'Saved correctly', 'crons saved')
+
+    def back_up_crons(self):
+        options = QtWidgets.QFileDialog.Options()
+        fileName, _ = QtWidgets.QFileDialog.getSaveFileName(
+            None, "QFileDialog.getSaveFileName()", "", "All Files (*);;Text Files (*.txt)", options=options)
+        try:
+            with open(fileName, 'w') as f:
+                for i in self.cron_list:
+                    f.write(" ".join([*i])+'\n')
+            QtWidgets.QMessageBox.information(
+                None, 'Backup Saved', 'Backup saved Correctly')
+        except PermissionError:
+            QtWidgets.QMessageBox.warning(
+                None, 'No permisions', 'this user dont have permisions to save the file here')
+        except:
+            QtWidgets.QMessageBox.warning(
+                None, 'Error', 'Error was found cant save the file')
 
 
 if __name__ == "__main__":
