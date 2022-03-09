@@ -13,12 +13,11 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import os
 
 
-class Ui_Frame(object):
+class crontab_gui():
     def setupUi(self, Frame):
         Frame.setObjectName("Frame")
         Frame.setEnabled(True)
-        Frame.resize(462, 640)
-        Frame.setMaximumSize(QtCore.QSize(480, 640))
+        Frame.setFixedSize(480, 640)
         self.label = QtWidgets.QLabel(Frame)
         self.label.setGeometry(QtCore.QRect(200, 10, 91, 31))
         self.label.setObjectName("label")
@@ -171,8 +170,6 @@ class Ui_Frame(object):
         item = QtWidgets.QTableWidgetItem()
         self.tableWidget.setHorizontalHeaderItem(3, item)
         item = QtWidgets.QTableWidgetItem()
-        icon = QtGui.QIcon.fromTheme("SP_TrashIcon")
-        item.setIcon(icon)
         self.tableWidget.setItem(0, 3, item)
         self.horizontalLayoutWidget_4 = QtWidgets.QWidget(Frame)
         self.horizontalLayoutWidget_4.setGeometry(
@@ -240,6 +237,7 @@ class Ui_Frame(object):
         """
         Custom section
         """
+
         self.cron_list = []
         self.iconDelete = QtWidgets.QWidget().style().standardIcon(
             getattr(QtWidgets.QStyle, "SP_TrashIcon"))
@@ -285,9 +283,10 @@ class Ui_Frame(object):
                 rows, 1, QtWidgets.QTableWidgetItem(i[1]))
             self.tableWidget.setCellWidget(
                 rows, 2, QtWidgets.QPushButton(self.iconEdit, ''))
+            self.delete = QtWidgets.QPushButton(self.iconDelete, '')
+            self.delete.clicked.connect(lambda: self.remove_cron(rows))
             self.tableWidget.setCellWidget(
-                rows, 3, QtWidgets.QPushButton(self.iconDelete, ''))
-        print(self.cron_list)
+                rows, 3, self.delete)
 
     def handle_add_cron_button(self):
 
@@ -313,36 +312,40 @@ class Ui_Frame(object):
             QtWidgets.QMessageBox.warning(None, 'Syntax Error', isvalid)
 
     def load_crons(self) -> None:
+        if self.cron_list:
+            result = QtWidgets.QMessageBox.warning(None, 'Unchanged crons will be deleted',
+                                                   'this is going to load only the crons from the file',
+                                                   QtWidgets.QMessageBox.StandardButton.Ok | QtWidgets.QMessageBox.StandardButton.Cancel)
+            if result != QtWidgets.QMessageBox.StandardButton.Ok:
+                return
+
         self.clean_files()
         os.system(f"crontab -l > {self.crontab_file_name}")
         crons = []
         with open(f"{self.crontab_file_name}", "r") as f:
             lines = f.readlines()
-            if(len(lines) != 0):
-                for i in lines:
-                    if not i.startswith("#"):
-                        i = i.replace("\n", "")
-                        splited = i.split(" ")
-                        if splited[0].startswith("@"):
-                            crons.append(
-                                [splited[0], " ".join(splited[1:])])
-                        else:
-                            crons.append(
-                                [" ".join(splited[:5]), " ".join(splited[5:])])
-        self.cron_list = crons
-        self.tableWidget.setRowCount(len(crons))
+            if(len(lines) == 0):
+                return
+
+            for i in lines:
+                if i.startswith("#"):
+                    continue
+
+                i = i.replace("\n", "")
+                splited = i.split(" ")
+                if splited[0].startswith("@"):
+                    crons.append(
+                        [splited[0], " ".join(splited[1:])])
+                else:
+                    crons.append(
+                        [" ".join(splited[:5]), " ".join(splited[5:])])
+
         if not crons:
             QtWidgets.QMessageBox.information(None,
                                               'No crons', 'this user has no crons')
-        for idx, item in enumerate(crons):
-            self.tableWidget.setItem(
-                idx, 0, QtWidgets.QTableWidgetItem(item[0]))
-            self.tableWidget.setItem(
-                idx, 1, QtWidgets.QTableWidgetItem(item[1]))
-            self.tableWidget.setCellWidget(
-                idx, 2, QtWidgets.QPushButton(self.iconEdit, ''))
-            self.tableWidget.setCellWidget(
-                idx, 3, QtWidgets.QPushButton(self.iconDelete, ''))
+            return
+        self.clear_crons_gui()
+        self.add_crons_new(crons)
 
     def changed_cron(self, time: str = ''):
         self.new_cront_job = self.command_input.text()
@@ -355,8 +358,8 @@ class Ui_Frame(object):
             self.minute_input.text(),
             self.hour_input.text(),
             self.day_input.text(),
+            self.week_input.text(),
             self.month_input.text(),
-            self.week_input.text()
         ])
         self.changed_cron(times)
 
@@ -374,12 +377,20 @@ class Ui_Frame(object):
             return error
         return True
 
+    def remove_cron(self, row: int) -> None:
+        self.tableWidget.removeRow(row)
+        self.cron_list.pop(row)
+
+    def clear_crons_gui(self) -> None:
+        self.cron_list = []
+        self.tableWidget.setRowCount(0)
+
 
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
     Frame = QtWidgets.QFrame()
-    ui = Ui_Frame()
+    ui = crontab_gui()
     ui.setupUi(Frame)
     Frame.show()
     sys.exit(app.exec_())
