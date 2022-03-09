@@ -159,7 +159,7 @@ class Ui_Frame(object):
         self.tableWidget.setWordWrap(True)
         self.tableWidget.setObjectName("tableWidget")
         self.tableWidget.setColumnCount(4)
-        self.tableWidget.setRowCount(1)
+        self.tableWidget.setRowCount(0)
         item = QtWidgets.QTableWidgetItem()
         self.tableWidget.setVerticalHeaderItem(0, item)
         item = QtWidgets.QTableWidgetItem()
@@ -240,7 +240,7 @@ class Ui_Frame(object):
         """
         Custom section
         """
-        self.crons_to_save = []
+        self.cron_list = []
         self.iconDelete = QtWidgets.QWidget().style().standardIcon(
             getattr(QtWidgets.QStyle, "SP_TrashIcon"))
         self.iconEdit = QtWidgets.QWidget().style().standardIcon(
@@ -263,7 +263,7 @@ class Ui_Frame(object):
 
         self.add_button.clicked.connect(self.set_custom_time)
         self.cancel_button.clicked.connect(sys.exit)
-        self.pushButton_7.clicked.connect(self.add_cron)
+        self.pushButton_7.clicked.connect(self.handle_add_cron_button)
 
     def clean_files(self) -> None:
         try:
@@ -271,6 +271,46 @@ class Ui_Frame(object):
             os.remove("/tmp/clean_crons")
         except:
             print("dont exist")
+
+    def add_crons_new(self, crons: [[]]) -> None:
+
+        for cron in crons:
+            self.cron_list.append(cron)
+        rows = self.tableWidget.rowCount()
+        for i in crons:
+            self.tableWidget.setRowCount(rows+1)
+            self.tableWidget.setItem(
+                rows, 0, QtWidgets.QTableWidgetItem(i[0]))
+            self.tableWidget.setItem(
+                rows, 1, QtWidgets.QTableWidgetItem(i[1]))
+            self.tableWidget.setCellWidget(
+                rows, 2, QtWidgets.QPushButton(self.iconEdit, ''))
+            self.tableWidget.setCellWidget(
+                rows, 3, QtWidgets.QPushButton(self.iconDelete, ''))
+        print(self.cron_list)
+
+    def handle_add_cron_button(self):
+
+        cron = self.lineEdit.text()
+        times = ""
+        if(self.lineEdit.text().startswith("@")):
+            times = self.lineEdit.text().split(" ")[0]
+        else:
+            times = " ".join([
+                self.minute_input.text(),
+                self.hour_input.text(),
+                self.day_input.text(),
+                self.month_input.text(),
+                self.week_input.text()
+            ])
+        command = self.command_input.text()
+        if cron == '' or command == '':
+            return
+        isvalid = self.test_cron(cron)
+        if isvalid == True:
+            self.add_crons_new([[times, command]])
+        else:
+            QtWidgets.QMessageBox.warning(None, 'Syntax Error', isvalid)
 
     def load_crons(self) -> None:
         self.clean_files()
@@ -289,10 +329,11 @@ class Ui_Frame(object):
                         else:
                             crons.append(
                                 [" ".join(splited[:5]), " ".join(splited[5:])])
-        self.crons_to_save = crons
+        self.cron_list = crons
         self.tableWidget.setRowCount(len(crons))
         if not crons:
-            self.show_dialog('No crons', 'this user has no crons')
+            QtWidgets.QMessageBox.information(None,
+                                              'No crons', 'this user has no crons')
         for idx, item in enumerate(crons):
             self.tableWidget.setItem(
                 idx, 0, QtWidgets.QTableWidgetItem(item[0]))
@@ -332,46 +373,6 @@ class Ui_Frame(object):
                 'utf-8').split("\n")[0].split(' ')[1:])
             return error
         return True
-
-    def add_cron(self):
-        cron = self.lineEdit.text()
-
-        times = " ".join([
-            self.minute_input.text(),
-            self.hour_input.text(),
-            self.day_input.text(),
-            self.month_input.text(),
-            self.week_input.text()
-        ])
-        command = self.command_input.text()
-        if cron == '' or command == '':
-            return
-        isvalid = self.test_cron(cron)
-        if isvalid == True:
-            rows = self.tableWidget.rowCount()
-            self.tableWidget.setRowCount(rows+1)
-            self.tableWidget.setItem(
-                rows, 0, QtWidgets.QTableWidgetItem(times))
-            self.tableWidget.setItem(
-                rows, 1, QtWidgets.QTableWidgetItem(command))
-            self.tableWidget.setCellWidget(
-                rows, 2, QtWidgets.QPushButton(self.iconEdit, ''))
-            self.tableWidget.setCellWidget(
-                rows, 3, QtWidgets.QPushButton(self.iconDelete, ''))
-
-        else:
-            self.show_dialog('Syntax Error', isvalid)
-
-    def show_dialog(self, title: str, text: str, cancel: bool = False):
-        Dialog = QtWidgets.QDialog()
-        dlg = QtWidgets.QMessageBox(
-            QtWidgets.QMessageBox.Icon.NoIcon, title, text)
-        dlg.setModal(True)
-        dlg.addButton(QtWidgets.QMessageBox.StandardButton.Ok)
-        if(cancel):
-            dlg.addButton(QtWidgets.QMessageBox.StandardButton.Cancel)
-        choice = dlg.exec()
-        dlg.exec()
 
 
 if __name__ == "__main__":
