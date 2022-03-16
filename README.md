@@ -6,6 +6,6 @@ A gui for new user linux or people who likes to use guis and dont like the comma
 
 It may looks diferent in your machine
 <p align="center">
-  <img width="460" height="300" src="https://i.imgur.com/bavXt0q.png">
+  <img width="200" height="600" src="https://i.imgur.com/bavXt0q.png">
 </p>
 
