@@ -5,5 +5,8 @@
 A gui for new user linux or people who likes to use guis and dont like the command line version
 
 It may looks diferent in your machine
-
+<div style="align:center;">
 ![GUI](https://i.imgur.com/bavXt0q.png)
+<div>
+
+
